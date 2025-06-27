@@ -1,0 +1,65 @@
+# =============================
+# Node.js / Vite / Svelte
+# =============================
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json # (optional — keep if you want reproducible builds)
+yarn.lock         # (optional — same reason)
+pnpm-lock.yaml    # (optional)
+
+# Vite cache
+.vite/
+
+# SvelteKit / Svelte specific
+.svelte-kit/
+
+# =============================
+# Tauri
+# =============================
+
+# Rust target directory
+/src-tauri/target/
+
+# Tauri build artifacts
+/src-tauri/tauri.conf.json
+/src-tauri/bundle/
+/src-tauri/*.log
+
+# Cargo specific
+/src-tauri/Cargo.lock
+
+# =============================
+# OS / Editor Junk
+# =============================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+
+# =============================
+# IDE / Editor config
+# =============================
+.vscode/
+.idea/
+*.iml
+
+# =============================
+# Environment files (secrets)
+# =============================
+.env
+.env.*
+
+# =============================
+# Misc
+# =============================
+/coverage/
+*.pid
+*.seed
+*.pid.lock
