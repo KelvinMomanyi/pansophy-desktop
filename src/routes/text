@@ -1,0 +1,140 @@
+ SIDEBAR
+  <div class="rounded-tl-[20px] rounded-bl-[20px]
+              px-[20px] py-[40px] text-white col-span-2 h-full 
+              bg-black/19 border-r border-white/10 
+              flex flex-col gap-3">
+
+    <div class="grid grid-rows-3 gap-3 px-3">
+      <div class="p-2 border border-white/20 flex items-center gap-4 bg-black/40 rounded-xl">
+        <div class="flex p-2 items-center justify-center bg-white/24 rounded-full">
+          <Fa icon={faPlus} class="text-2xl" />
+        </div>
+        <p class="font-poppins font-light text-[15px]">New Chat</p>
+      </div>
+
+      <div class="p-4 border border-white/20 flex items-center justify-between gap-4  bg-black/40 rounded-xl">
+        <p class="font-poppins font-light text-[15px] text-white/50">Search the chats</p>
+        <Fa icon={faSearch} class="text-2xl" />
+      </div>
+
+      <div class="border-b border-white/20"></div>
+    </div>
+
+    <div>
+      <p class="text-white/40 px-3 pb-4 font-poppins font-light text-[13px]">Last Chats</p>
+      <div class="flex flex-col">
+        {#each companies as name, index}
+          <button
+            class={`group flex items-center justify-between gap-4 rounded-xl transition-colors duration-200 cursor-pointer 
+              ${activeIndex === index ? 'bg-black/40' : 'hover:bg-black/40'}`}
+            on:click={() => activeIndex = index}
+          >
+            <p class="px-3 py-[13px] font-poppins font-light text-[15px] text-white">
+              {name}
+            </p>
+            <div class={`mr-4 transition-opacity duration-300 
+                ${activeIndex === index ? 'opacity-100' : 'group-hover:opacity-100 opacity-0'}`}>
+              <Fa icon={faEllipsisH} class="text-white text-2xl" />
+            </div>
+          </button>
+        {/each}
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="col-span-5 flex flex-col items-center justify-end h-full text-white pt-[20px] pr-[70px] pb-[30px] pl-[70px] gap-[33px]">
+
+    <div class="p-[24px] bg-black/40 rounded-[20px] flex flex-col gap-[15px]">
+      <p class="font-poppins font-normal text-[20px]">
+        ISO Certified Companies Cutting Tools Materials Made of Steel Near Me
+      </p>
+      <p class="font-poppins font-light text-[15px]">
+        10 companies were found with ISO certification for cutting tools materials made of steel in Texas. The closest to the location you specified is company A and the furthest is company B. Companies C, D and E also manufacture equipment out of fiberglass.
+      </p>
+
+      <div class="flex items-center gap-[16px]">
+        <svg
+              width="17"
+              height="18"
+              viewBox="0 0 17 18"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M11 4.90335H2.66667C1.74619 4.90335 1 5.64954 1 6.57002V14.9034C1 15.8239 1.74619 16.57 2.66667 16.57H11C11.9205 16.57 12.6667 15.8239 12.6667 14.9034V6.57002C12.6667 5.64954 11.9205 4.90335 11 4.90335Z"
+                stroke="white"
+                stroke-width="2"
+              />
+              <path
+                d="M4.33331 4.07001V3.65335C4.33331 3.26584 4.33331 3.07251 4.36498 2.91168C4.42923 2.58821 4.588 2.29108 4.8212 2.05789C5.05439 1.8247 5.35152 1.66593 5.67498 1.60167C5.83582 1.57001 6.02915 1.57001 6.41665 1.57001H12.6667C14.2383 1.57001 15.0233 1.57001 15.5117 2.05834C16 2.54668 16 3.33168 16 4.90335V11.57C16 13.1417 16 13.9267 15.5117 14.415C15.0233 14.9034 14.2383 14.9034 12.6667 14.9034H11.8333"
+                stroke="white"
+                stroke-width="2"
+              />
+            </svg>
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 17 17"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M15.8549 7.20778C15.6241 6.93065 15.3352 6.70756 15.0088 6.55425C14.6823 6.40095 14.3261 6.32118 13.9655 6.32056H10.2194L10.6795 5.14582C10.8708 4.63147 10.9346 4.07837 10.8652 3.53397C10.7958 2.98958 10.5954 2.47014 10.2812 2.02021C9.96698 1.57027 9.5483 1.20328 9.06108 0.95071C8.57386 0.698138 8.03264 0.567525 7.48385 0.570074C7.32582 0.570404 7.17125 0.616304 7.03865 0.702272C6.90606 0.78824 6.80107 0.910626 6.73629 1.05476L4.39502 6.32056H2.46449C1.81087 6.32056 1.18402 6.58021 0.721834 7.0424C0.259651 7.50458 0 8.13143 0 8.78506V14.5355C0 15.1892 0.259651 15.816 0.721834 16.2782C1.18402 16.7404 1.81087 17 2.46449 17H12.9222C13.4987 16.9998 14.0569 16.7975 14.4997 16.4283C14.9425 16.0591 15.2418 15.5463 15.3456 14.9792L16.3889 9.22867C16.4534 8.87327 16.439 8.50803 16.3468 8.15881C16.2545 7.80959 16.0866 7.48492 15.8549 7.20778ZM4.10749 15.357H2.46449C2.24662 15.357 2.03767 15.2705 1.88361 15.1164C1.72955 14.9624 1.643 14.7534 1.643 14.5355V8.78506C1.643 8.56718 1.72955 8.35823 1.88361 8.20417C2.03767 8.05011 2.24662 7.96356 2.46449 7.96356H4.10749V15.357ZM14.787 8.93293L13.7437 14.6834C13.7087 14.8748 13.6069 15.0475 13.4565 15.1709C13.306 15.2942 13.1167 15.3602 12.9222 15.357H5.75049V7.31458L7.98496 2.28701C8.21497 2.35406 8.42858 2.46807 8.61231 2.62183C8.79603 2.7756 8.94589 2.96578 9.05242 3.18038C9.15894 3.39498 9.21982 3.62933 9.23122 3.86864C9.24262 4.10795 9.20428 4.34702 9.11863 4.57077L8.68324 5.74551C8.59046 5.99382 8.55914 6.26088 8.59195 6.52391C8.62475 6.78694 8.72071 7.03813 8.87163 7.25603C9.02255 7.47394 9.22396 7.6521 9.45865 7.7753C9.69335 7.89851 9.95437 7.9631 10.2194 7.96356H13.9655C14.0862 7.96336 14.2054 7.98976 14.3147 8.04087C14.4241 8.09199 14.5208 8.16656 14.598 8.2593C14.6772 8.35075 14.7351 8.45855 14.7678 8.57499C14.8005 8.69144 14.807 8.81366 14.787 8.93293Z"
+                fill="white"
+              />
+            </svg>
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 17 17"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M1.00214 10.3622C1.23297 10.6394 1.52182 10.8625 1.84829 11.0158C2.17477 11.1691 2.53091 11.2488 2.89159 11.2494H6.63762L6.17758 12.4242C5.98623 12.9385 5.9225 13.4916 5.99187 14.036C6.06124 14.5804 6.26163 15.0999 6.57585 15.5498C6.89008 15.9997 7.30876 16.3667 7.79598 16.6193C8.2832 16.8719 8.82442 17.0025 9.37321 16.9999C9.53123 16.9996 9.68581 16.9537 9.8184 16.8677C9.951 16.7818 10.056 16.6594 10.1208 16.5152L12.462 11.2494H14.3926C15.0462 11.2494 15.673 10.9898 16.1352 10.5276C16.5974 10.0654 16.8571 9.43858 16.8571 8.78495V3.03446C16.8571 2.38084 16.5974 1.75399 16.1352 1.2918C15.673 0.82962 15.0462 0.569969 14.3926 0.569969H3.93489C3.35835 0.570162 2.80013 0.772476 2.35735 1.14171C1.91456 1.51095 1.61524 2.02374 1.51147 2.59085L0.468166 8.34134C0.403637 8.69674 0.418018 9.06198 0.510292 9.4112C0.602568 9.76042 0.770479 10.0851 1.00214 10.3622ZM12.7496 2.21297H14.3926C14.6104 2.21297 14.8194 2.29952 14.9734 2.45358C15.1275 2.60764 15.2141 2.81659 15.2141 3.03446V8.78495C15.2141 9.00283 15.1275 9.21178 14.9734 9.36584C14.8194 9.5199 14.6104 9.60645 14.3926 9.60645H12.7496V2.21297ZM2.07009 8.63708L3.11339 2.88659C3.14838 2.69522 3.25016 2.52247 3.4006 2.39912C3.55103 2.27576 3.74037 2.20979 3.93489 2.21297H11.1066V10.2554L8.87209 15.283C8.64209 15.2159 8.42848 15.1019 8.24475 14.9482C8.06102 14.7944 7.91117 14.6042 7.80464 14.3896C7.69811 14.175 7.63723 13.9407 7.62583 13.7014C7.61444 13.4621 7.65277 13.223 7.73843 12.9992L8.17382 11.8245C8.26659 11.5762 8.29791 11.3091 8.26511 11.0461C8.2323 10.7831 8.13634 10.5319 7.98542 10.314C7.8345 10.0961 7.6331 9.91791 7.3984 9.7947C7.16371 9.6715 6.90269 9.60691 6.63762 9.60645H2.89159C2.7709 9.60664 2.65165 9.58025 2.54232 9.52913C2.43299 9.47802 2.33627 9.40344 2.25903 9.31071C2.17989 9.21926 2.12193 9.11146 2.08926 8.99502C2.0566 8.87857 2.05006 8.75635 2.07009 8.63708Z"
+                fill="white"
+              />
+            </svg>
+      </div>
+
+      <div class="w-min bg-white/24 backdrop-filter backdrop-blur-xl py-[5px] px-[14px] rounded-full">
+        <p class="font-poppins font-light text-[14px]">Sources</p>
+      </div>
+    </div>
+
+    <div class="flex justify-end w-full">
+      <div class="p-[14px] bg-[#2563EB99]/60 rounded-[20px]">
+        <p class="font-poppins font-light max-w-[365px] text-[14px]">
+          ISO Certified Companies Cutting Tools Materials Made of Steel Near Me
+        </p>
+      </div>
+    </div>
+
+    <div class="w-[687px] h-[160px] pt-[23px] pr-[10px] pb-[23px] pl-[10px]">
+      <div class="flex flex-col w-[667px] h-[114px] rounded-[26px] p-[6px] gap-[14px] bg-black/40">
+        <div class="w-[655px] h-[41px] px-[12px] py-[10px]">
+          <p class="font-poppins font-light text-[14px] text-white/60">
+            Ask me anything
+          </p>
+        </div>
+        <div class="flex w-[655px] justify-between gap-[9px]">
+          <div class="flex items-center gap-[10px]">
+            <div class="flex items-center text-center p-4">
+              <Fa icon={faPlus} class="text-2xl" />
+            </div>
+            <div class="bg-white/24 backdrop-filter backdrop-blur-xl py-[8px] px-[14px] rounded-full">
+              <p class="font-poppins font-light text-[14px]">Deep Thinking</p>
+            </div>
+            <div class="bg-white/24 backdrop-filter backdrop-blur-xl py-[8px] px-[14px] rounded-full">
+              <p class="font-poppins font-light text-[14px]">Search the web</p>
+            </div>
+          </div>
+          <div class="h-[42px] w-[42px] rounded-full overflow-hidden bg-[#2563EB]">
+            <img src={logo} alt="Logo" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>

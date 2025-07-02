@@ -1,5 +1,5 @@
 {
-  "name": "desktopaifrontend",
+  "name": "five",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,12 +10,19 @@
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.1.0",
-    "@tauri-apps/cli": "^2.6.1",
+    "@tauri-apps/cli": "^2.6.0",
     "svelte": "^5.34.7",
     "vite": "^7.0.0"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.11",
-    "tailwindcss": "^4.1.11"
+    "@fortawesome/free-brands-svg-icons": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@tailwindcss/vite": "^4.1.10",
+    "svelte-fa": "^4.0.4",
+    "svelte-icons": "^2.1.0",
+    "svelte-spa-router": "^4.0.1",
+    "tailwindcss": "^4.1.10",
+    "three": "^0.178.0",
+    "threlte": "^3.13.1"
   }
 }
