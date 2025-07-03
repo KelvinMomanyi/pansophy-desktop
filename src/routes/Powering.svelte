@@ -3,6 +3,7 @@
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
+  let statusText = "Powering on ...";
   let container;
 
   onMount(() => {
@@ -21,12 +22,31 @@
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 6);
     scene.add(ambientLight);
+    
+    const centerLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    centerLight.position.set(0, -6, 0);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(0, 5, 5);
-    scene.add(directionalLight);
+    scene.add(centerLight);
+    
+    const lightLeft = new THREE.DirectionalLight(0xffffff, 1);
+    lightLeft.position.set(2, -1, 0); 
+
+    scene.add(lightLeft);
+
+    const lightRight = new THREE.DirectionalLight(0xffffff, 1)
+    lightRight.position.set(-2, -1, 0);
+
+    scene.add(lightRight);
+
+    const directionalLightLeft = new THREE.DirectionalLight(0xffffff, 3);
+    directionalLightLeft.position.set(3, 4, 3);
+    scene.add(directionalLightLeft);
+
+    const directionalLightRight = new THREE.DirectionalLight(0xffffff, 3);
+    directionalLightRight.position.set(-3, 4, 3);
+    scene.add(directionalLightRight);
 
     const loader = new GLTFLoader();
     let mixer;
@@ -40,12 +60,16 @@
       '/models/pansophyBot.glb',
       (gltf) => {
         scene.add(gltf.scene);
+        statusText = "Consciousness activated";
+
+        setTimeout(() => {
+          statusText = "Self-awareness detected";
+        }, 2200);
 
         if (gltf.animations && gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(gltf.scene);
           gltf.animations.forEach((clip) => {
             const action = mixer.clipAction(clip);
-            action.loop = THREE.LoopRepeat;
             action.play();
           });
         } else {
@@ -101,6 +125,6 @@
 <div class="flex flex-col items-center justify-center w-full">
     <div bind:this={container} class="w-full h-[400px] overflow-hidden bg-transparent"></div>
     <div class="w-full flex justify-center">
-        <a class="text-white font-poppins text-[20px]" href="#/eula">Powering</a>
+        <p class="text-white font-poppins text-[20px]">{statusText}</p>
     </div>
 </div>
