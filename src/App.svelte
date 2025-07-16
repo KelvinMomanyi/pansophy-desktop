@@ -5,21 +5,25 @@
   import Eula from './routes/Eula.svelte';
   import Powering from './routes/Powering.svelte';
   import Chat from './routes/Chat.svelte';
-
+  import WindowControls from './components/windowControls.svelte';
   const routes = {
     '/':Powering,
-    '/chat': Chat,
+  
     '/eula': Eula,
+    '/chat': Chat,
     '*': NotFound
   };
 </script>
 
 <div
-  class="flex items-center justify-center
-         w-screen h-screen
-         bg-gradient-to-br from-black/80 to-black/10
-         border border-white/30
-         shadow-[inset_4px_4px_20px_0_rgba(255,255,255,0.32)]"
+  class=" glass flex items-center rounded-2xl justify-center
+       w-screen h-screen 
+       bg-gradient-to-br from-black/60 to-black/40 
+     bg-clip-padding backdrop-filter backdrop-blur-lg bg-opacity-20 border 
+     bg-white/10 
+shadow-[inset_0_0_60px_0_rgba(255,255,255,0.1)]
+         "
 >
+  <WindowControls /> 
   <Router {routes} />
 </div>
