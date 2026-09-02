@@ -1,47 +1,92 @@
-# Svelte + Vite
+# Pansophy Desktop
 
-This template should help get you started developing with Svelte in Vite.
+Pansophy is a local-first desktop research assistant built with Svelte 5 and Tauri 2. It
+combines streamed conversations with a bundled Ollama service, DuckDuckGo Lite search, and
+Tesseract/PDF text extraction.
 
-## Recommended IDE Setup
+## Prerequisites
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+- Node.js 24 and npm 11 (Node 20.19+ also works with Vite 7)
+- The stable Rust toolchain and the platform prerequisites from the Tauri 2 setup guide
+- Windows x64 for the sidecar binaries currently committed in `src-tauri/binaries`
 
-## Need an official Svelte framework?
+The UI can be developed on other operating systems, but a native bundle needs matching Ollama
+and Tesseract sidecars named with that platform's Rust target triple.
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+## Fresh-clone setup
 
-## Technical considerations
-
-**Why use this over SvelteKit?**
-
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
-
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
-
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
-
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `checkJs` in the JS template?**
-
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+```powershell
+git clone <repository-url>
+cd pansophy-desktop
+Copy-Item .env.example .env
+npm ci
+npm run setup:binaries
+npm run tauri:dev
 ```
+
+`setup:binaries` does not download executables. It verifies the committed sidecars and, when a
+generic binary is supplied, renames it to the target-triple filename required by Tauri. The
+Windows x64 Ollama and Tesseract sidecars are already in the repository.
+
+On startup, the native application checks `PANSOPHY_OLLAMA_PORT` (11500 by default). It reuses an
+Ollama service already listening there or starts the bundled sidecar. The frontend connects to
+the same service through `VITE_OLLAMA_API_URL`.
+
+## Commands
+
+| Command                                           | Purpose                                |
+| ------------------------------------------------- | -------------------------------------- |
+| `npm run tauri:dev`                               | Start the complete desktop application |
+| `npm run dev`                                     | Start only the browser UI              |
+| `npm run build`                                   | Build the browser assets               |
+| `npm run check`                                   | Run Svelte/JavaScript diagnostics      |
+| `npm run lint`                                    | Run ESLint                             |
+| `npm run format:check`                            | Check Prettier formatting              |
+| `npm test`                                        | Run the Vitest suite once              |
+| `cargo test --manifest-path src-tauri/Cargo.toml` | Run native unit tests                  |
+
+## Configuration
+
+Copy `.env.example` to `.env` for local overrides:
+
+- `VITE_OLLAMA_API_URL`: browser-visible Ollama base URL. Plain HTTP is accepted only for loopback
+  addresses; remote services must use HTTPS.
+- `PANSOPHY_OLLAMA_PORT`: port used by the native health check and bundled sidecar.
+
+Do not commit `.env`. No secret is required for the bundled local services.
+
+## Architecture
+
+```text
+src/routes and src/components  Svelte presentation and interaction
+src/lib/chatApi.js             validated Ollama HTTP/NDJSON boundary
+src/lib/errors.js              normalized application errors
+src/lib/logger.js              structured browser log events
+src/lib/themeStore.js          theme state and native synchronization
+src-tauri/src/lib.rs           validated Tauri commands and sidecar lifecycle
+src-tauri/src/utils.rs         DuckDuckGo response parsing
+```
+
+The browser layer never parses Ollama streams inside a component. Native commands return
+serializable `{ code, message }` errors so the UI receives predictable failures.
+
+## Tests and CI
+
+Vitest and Testing Library cover stores, Svelte interaction, and API stream parsing. Rust unit
+tests cover text cleanup, URL parsing, and command input validation. `.github/workflows/ci.yml`
+runs linting, Svelte diagnostics, frontend tests/build, Rust formatting, `cargo check`, and Rust
+tests on every push and pull request.
+
+To enforce CI before merging, enable branch protection for the default branch and require:
+
+- `Frontend quality`
+- `Rust quality`
+
+## Troubleshooting
+
+- **The AI service is unavailable:** confirm port 11500 is free or set both variables in `.env`
+  and your shell to the same alternative port.
+- **A sidecar is missing:** obtain the correct Ollama/Tesseract executable, place it in
+  `src-tauri/binaries`, and run `npm run setup:binaries`.
+- **The browser-only UI reports Tauri errors:** use `npm run tauri:dev` for search, OCR, window
+  controls, and notifications; those features require the native runtime.

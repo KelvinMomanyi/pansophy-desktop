@@ -6,8 +6,7 @@ use tauri_plugin_http::reqwest::Client;
 use url::Url;
 
 fn clean_html_text(text: &str) -> String {
-    // Simple HTML tag removal and entity decoding
-    let mut cleaned = text
+    let cleaned = text
         .replace("<b>", "")
         .replace("</b>", "")
         .replace("&nbsp;", " ")
@@ -15,15 +14,9 @@ fn clean_html_text(text: &str) -> String {
         .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&quot;", "\"")
-        .trim()
-        .to_string();
+        .replace("&#39;", "'");
 
-    // Remove extra whitespace
-    while cleaned.contains("  ") {
-        cleaned = cleaned.replace("  ", " ");
-    }
-
-    cleaned
+    cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,14 +54,14 @@ pub struct DuckDuckGoLiteClient {
 }
 
 impl DuckDuckGoLiteClient {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self, String> {
+        Ok(Self {
             client: Client::builder()
                 .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .build()
-                .unwrap(),
+                .map_err(|error| error.to_string())?,
             base_url: "https://lite.duckduckgo.com/lite/".to_string(),
-        }
+        })
     }
 
     pub async fn search(self, search_term: String) -> Result<Vec<SearchResult>, String> {
@@ -76,8 +69,14 @@ impl DuckDuckGoLiteClient {
         let url = format!("{}?q={}", self.base_url, encoded_term);
         let request = self.client.request(reqwest::Method::GET, &url);
 
-        let response = request.send().await.unwrap();
-        let body = response.text().await.map_err(|e| e.to_string()).unwrap();
+        let response = request.send().await.map_err(|error| error.to_string())?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Search provider returned HTTP {}",
+                response.status()
+            ));
+        }
+        let body = response.text().await.map_err(|error| error.to_string())?;
 
         let document = scraper::Html::parse_document(&body);
 
@@ -86,13 +85,10 @@ impl DuckDuckGoLiteClient {
         // Select all table rows
         let row_selector = Selector::parse("tr").map_err(|e| e.to_string())?;
         let link_selector = Selector::parse("a.result-link").map_err(|e| e.to_string())?;
-        // let out_link_selector = Selector::parse("a.result-link").map_err(|e| e.to_string())?;
         let snippet_selector = Selector::parse("td.result-snippet").map_err(|e| e.to_string())?;
         let link_text_selector = Selector::parse("span.link-text").map_err(|e| e.to_string())?;
 
         let rows: Vec<_> = document.select(&row_selector).collect();
-        // let link = String::from("https:".to_owned() + link_element.value().attr("href").unwrap_or(""));
-
         // Process rows in groups - each result spans multiple rows
         let mut i = 0;
         while i < rows.len() {
@@ -101,10 +97,12 @@ impl DuckDuckGoLiteClient {
             // Look for the link in current row
             if let Some(link_element) = current_row.select(&link_selector).next() {
                 let title = link_element.inner_html();
-                // let link = link_element.value().attr("href").unwrap_or("").to_string();
-                let link = String::from(
-                    "https:".to_owned() + link_element.value().attr("href").unwrap_or(""),
-                );
+                let href = link_element.value().attr("href").unwrap_or("");
+                let link = if href.starts_with("//") {
+                    format!("https:{href}")
+                } else {
+                    href.to_string()
+                };
 
                 // Look for description and link text in subsequent rows
                 let mut description = String::new();
@@ -144,15 +142,50 @@ impl DuckDuckGoLiteClient {
 
             i += 1;
         }
-        // for (index, result) in results.iter().enumerate() {
-        //     println!("Result {}:", index + 1);
-        //     println!("Title: {}", result.title);
-        //     println!("Description: {}", result.description);
-        //     println!("Link: {}", result.link);
-        //     println!("Domain: {}", result.domain);
-        //     println!("{}", "-".repeat(80));
-        // }
-
         Ok(results)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{clean_html_text, extract_domain};
+
+    #[test]
+    fn cleans_supported_html_and_entities() {
+        assert_eq!(
+            clean_html_text("  <b>Pansophy</b>&nbsp;&amp;&nbsp;friends  "),
+            "Pansophy & friends"
+        );
+    }
+
+    #[test]
+    fn collapses_mixed_whitespace() {
+        assert_eq!(clean_html_text("one\n\t two   three"), "one two three");
+    }
+
+    #[test]
+    fn extracts_domain_with_port() {
+        assert_eq!(
+            extract_domain("http://localhost:11500/api/chat").unwrap(),
+            "localhost"
+        );
+    }
+
+    #[test]
+    fn extracts_subdomain() {
+        assert_eq!(
+            extract_domain("https://docs.example.com/path?q=1").unwrap(),
+            "docs.example.com"
+        );
+    }
+
+    #[test]
+    fn rejects_relative_urls() {
+        assert!(extract_domain("/relative/path").is_err());
+    }
+
+    #[test]
+    fn rejects_urls_without_a_host() {
+        assert!(extract_domain("file:///tmp/document").is_err());
     }
 }

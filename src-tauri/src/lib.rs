@@ -1,163 +1,188 @@
-
-
-
+mod error;
 mod utils;
 
-use serde_json;
-use std::{collections::HashMap, net::TcpStream};
+use std::{collections::HashMap, net::TcpStream, path::Path, time::Duration};
+
+use serde_json::Value;
 use tauri::Manager;
 use tauri_plugin_shell::{process::CommandEvent, ShellExt};
 
-use crate::utils::{DuckDuckGoLiteClient, SearchResult};
+use crate::{
+    error::{CommandError, CommandResult},
+    utils::{DuckDuckGoLiteClient, SearchResult},
+};
 
-// Commands
+const DEFAULT_OLLAMA_PORT: u16 = 11_500;
+const MAX_SEARCH_LENGTH: usize = 500;
 
-#[tauri::command]
-async fn web_search(search: String) -> Result<Vec<SearchResult>, String> {
-    let duckduckgo_client = DuckDuckGoLiteClient::new();
-    Ok(duckduckgo_client.search(search).await.unwrap())
+fn ollama_port() -> u16 {
+    std::env::var("PANSOPHY_OLLAMA_PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .filter(|port| *port > 0)
+        .unwrap_or(DEFAULT_OLLAMA_PORT)
+}
+
+fn ollama_url(port: u16, path: &str) -> String {
+    format!("http://127.0.0.1:{port}{path}")
+}
+
+fn validate_search(search: &str) -> CommandResult<&str> {
+    let trimmed = search.trim();
+    if trimmed.is_empty() {
+        return Err(CommandError::new(
+            "INVALID_INPUT",
+            "A non-empty search query is required.",
+        ));
+    }
+    if trimmed.chars().count() > MAX_SEARCH_LENGTH {
+        return Err(CommandError::new(
+            "INVALID_INPUT",
+            "The search query is too long.",
+        ));
+    }
+    Ok(trimmed)
 }
 
 #[tauri::command]
-async fn img_to_text(img_path: String, app: tauri::AppHandle) -> Result<String, String> {
+async fn web_search(search: String) -> CommandResult<Vec<SearchResult>> {
+    let query = validate_search(&search)?;
+    DuckDuckGoLiteClient::new()
+        .map_err(|error| CommandError::internal("Could not initialize web search.", error))?
+        .search(query.to_owned())
+        .await
+        .map_err(|error| CommandError::internal("Web search failed.", error))
+}
+
+#[tauri::command]
+async fn img_to_text(img_path: String, app: tauri::AppHandle) -> CommandResult<String> {
+    let input_path = Path::new(&img_path);
+    if !input_path.is_file() {
+        return Err(CommandError::new(
+            "INVALID_INPUT",
+            "The selected file does not exist.",
+        ));
+    }
+
+    let extension = input_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if !matches!(extension.as_str(), "jpg" | "jpeg" | "pdf" | "png" | "webp") {
+        return Err(CommandError::new(
+            "INVALID_INPUT",
+            "Only PNG, JPEG, WebP, and PDF files are supported.",
+        ));
+    }
+
+    if extension == "pdf" {
+        let bytes = std::fs::read(input_path)
+            .map_err(|error| CommandError::internal("Could not read the PDF.", error))?;
+        return pdf_extract::extract_text_from_mem(&bytes).map_err(|error| {
+            CommandError::internal("Could not extract text from the PDF.", error)
+        });
+    }
+
     let tessdata_path = app
         .path()
         .resource_dir()
-        .map_err(|e| e.to_string())?
-        .as_path()
-        .join(String::from("resources/tesseract/tessdata"));
-
-    let tessdata_path = tessdata_path.to_str().unwrap();
-
-    if img_path.ends_with(".pdf") {
-        // Convert pdf file pages to images first
-        let bytes = std::fs::read(img_path.as_str()).unwrap();
-        let out = pdf_extract::extract_text_from_mem(&bytes).unwrap();
-        return Ok(out);
-    }
+        .map_err(|error| CommandError::internal("Could not locate application resources.", error))?
+        .join("resources/tesseract/tessdata");
+    let tessdata_path = tessdata_path.to_str().ok_or_else(|| {
+        CommandError::new("INVALID_PATH", "The OCR resource path is not valid UTF-8.")
+    })?;
 
     let sidecar_command = app
         .shell()
         .sidecar("tesseract")
-        .unwrap()
+        .map_err(|error| CommandError::internal("Could not prepare the OCR process.", error))?
         .env("TESSDATA_PREFIX", tessdata_path)
         .args([img_path.as_str(), "stdout", "-l", "eng", "--psm", "6"]);
-    let (mut rx, mut _child) = sidecar_command.spawn().unwrap();
+    let (mut events, _child) = sidecar_command
+        .spawn()
+        .map_err(|error| CommandError::internal("Could not start the OCR process.", error))?;
     let mut stdout = String::new();
     let mut stderr = String::new();
-    while let Some(event) = rx.recv().await {
+
+    while let Some(event) = events.recv().await {
         match event {
-            CommandEvent::Stdout(data) => {
-                stdout.push_str(&String::from_utf8_lossy(&data));
-            }
-            CommandEvent::Stderr(data) => {
-                stderr.push_str(&String::from_utf8_lossy(&data));
-            }
+            CommandEvent::Stdout(data) => stdout.push_str(&String::from_utf8_lossy(&data)),
+            CommandEvent::Stderr(data) => stderr.push_str(&String::from_utf8_lossy(&data)),
             CommandEvent::Error(error) => {
-                return Err(format!("Command error: {}", error));
+                return Err(CommandError::internal("The OCR process failed.", error));
+            }
+            CommandEvent::Terminated(payload) if payload.code == Some(0) => {
+                return Ok(stdout.trim().to_string());
             }
             CommandEvent::Terminated(payload) => {
-                if payload.code == Some(0) {
-                    println!("{}", stdout);
-                    return Ok(stdout.trim().to_string());
-                } else {
-                    return Err(format!(
-                        "Tesseract failed with code {:?}: {}",
-                        payload.code, stderr
-                    ));
-                }
+                log::error!(
+                    target: "pansophy",
+                    "tesseract exited with {:?}: {}",
+                    payload.code,
+                    stderr
+                );
+                return Err(CommandError::new(
+                    "OCR_FAILED",
+                    "Text extraction did not complete successfully.",
+                ));
             }
-            _ => {
-                todo!();
-            }
+            _ => {}
         }
     }
-    Err("Unexpected end of command stream".to_string())
+    Err(CommandError::new(
+        "OCR_FAILED",
+        "The OCR process ended unexpectedly.",
+    ))
 }
 
 #[tauri::command]
-fn health_check() -> Result<HashMap<String, serde_json::Value>, String> {
-    let url = "http://127.0.0.1:11500/api/tags";
-    let response = reqwest::blocking::get(url).map_err(|e| e.to_string())?;
-    let resp_str = response
-        .text()
-        .unwrap_or_else(|_| String::from("Failed to read response text"));
-    let json: serde_json::Value = serde_json::from_str(resp_str.as_str())
-        .map_err(|_| String::from("Failed to parse json"))?;
+fn health_check() -> CommandResult<HashMap<String, Value>> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .map_err(|error| CommandError::internal("Could not initialize the health check.", error))?;
+    let response = client
+        .get(ollama_url(ollama_port(), "/api/tags"))
+        .send()
+        .and_then(reqwest::blocking::Response::error_for_status)
+        .map_err(|error| CommandError::internal("The local AI service is unavailable.", error))?;
+    let payload: Value = response.json().map_err(|error| {
+        CommandError::internal("The local AI service returned invalid JSON.", error)
+    })?;
 
     let mut models = HashMap::new();
-    if let Some(models_array) = json.get("models").and_then(|v| v.as_array()) {
-        for model in models_array {
-            if let Some(name) = model.get("name").and_then(|n| n.as_str()) {
-                models.insert(name.to_string(), model.clone());
+    if let Some(model_values) = payload.get("models").and_then(Value::as_array) {
+        for model in model_values {
+            if let Some(name) = model.get("name").and_then(Value::as_str) {
+                models.insert(name.to_owned(), model.clone());
             }
         }
     }
-    return Ok(models);
+    Ok(models)
 }
 
-// Utils
-fn start_ollama(port: u32, app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let models_dir = match app
+fn start_ollama(port: u16, app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let models_dir = app
         .path()
         .resource_dir()?
-        .as_path()
-        .join(String::from("resources/ollama/models"))
+        .join("resources/ollama/models")
         .to_str()
-    {
-        Some(s) => s.to_string(),
-        None => String::new(),
-    };
+        .ok_or("The Ollama models path is not valid UTF-8.")?
+        .to_owned();
 
-    println!("Starting ollama on port {}", port);
-
+    log::info!(target: "pansophy", "starting local AI service on port {port}");
     let sidecar_command = app
         .shell()
-        .sidecar("ollama")
-        .unwrap()
-        .env("OLLAMA_HOST", format!("127.0.01:{port}"))
+        .sidecar("ollama")?
+        .env("OLLAMA_HOST", format!("127.0.0.1:{port}"))
         .env("OLLAMA_MODELS", models_dir)
         .args(["serve"]);
-    let _ = sidecar_command.spawn().unwrap();
-    return Ok(());
+    let _process = sidecar_command.spawn()?;
+    Ok(())
 }
 
-// use std::fs;
-
-// fn start_ollama(port: u32, app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-//     let models_dir = app
-//         .path()
-//         .resource_dir()?
-//         .join("resources/ollama/models");
-    
-//     // Create the models directory if it doesn't exist
-//     if !models_dir.exists() {
-//         fs::create_dir_all(&models_dir)?;
-//     }
-    
-//     let models_dir_str = models_dir
-//         .to_str()
-//         .ok_or("Failed to convert models directory path to string")?
-//         .to_string();
-
-//     println!("Starting ollama on port {}", port);
-//     println!("Models directory: {}", models_dir_str);
-
-//     let sidecar_command = app
-//         .shell()
-//         .sidecar("ollama")?
-//         .env("OLLAMA_HOST", format!("127.0.0.1:{}", port)) // Fixed IP address typo
-//         .env("OLLAMA_MODELS", models_dir_str)
-//         .args(["serve"]);
-    
-//     let (_rx, _child) = sidecar_command.spawn()?;
-    
-//     Ok(())
-// }
-
-
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize logging for debug builds
     if cfg!(debug_assertions) {
         app.handle().plugin(
             tauri_plugin_log::Builder::default()
@@ -165,50 +190,22 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 .build(),
         )?;
     }
-    
 
-
-    // Initialize resource here
-    let mut pansophy_ollama_port: u32 = 11500;
-    // let mut pansophy_ollama_port: u32 = 11434;
-    // Step 1: Check if ollama is running on our specific port
-    let addr = format!("127.0.0.1:{}", pansophy_ollama_port);
-    let is_occupied = TcpStream::connect(&addr).is_ok();
-
-    // Step 2: If occupied, verify that its an ollama instance
-    if is_occupied {
-        let mut is_ollama = false;
-        // Check if its an ollama instance
-        let url = format!("http://127.0.0.1:{pansophy_ollama_port}/api/tags");
-        let resp = match reqwest::blocking::get(&url) {
-            Ok(response) => response
-                .text()
-                .unwrap_or_else(|_| String::from("Failed to read response text")),
-            Err(_err) => String::from("Sorry an error occured"),
-        };
-
-        let resp_map: HashMap<String, serde_json::Value> = match serde_json::from_str(&resp) {
-            Ok(resp_) => resp_,
-            Err(err) => HashMap::from([(
-                String::from("error"),
-                serde_json::Value::String(err.to_string()),
-            )]),
-        };
-
-        if resp_map.contains_key("models") {
-            is_ollama = true;
+    let mut port = ollama_port();
+    let address = format!("127.0.0.1:{port}");
+    if TcpStream::connect(&address).is_ok() {
+        let is_ollama = reqwest::blocking::get(ollama_url(port, "/api/tags"))
+            .and_then(reqwest::blocking::Response::error_for_status)
+            .is_ok();
+        if is_ollama {
+            return Ok(());
         }
-
-        if !is_ollama {
-            // Adjust the port
-            pansophy_ollama_port += 1;
-            // Start sidecar ollama
-            let _ = start_ollama(pansophy_ollama_port, app);
-        }
-    } else {
-        let _ = start_ollama(pansophy_ollama_port, app);
+        port = port
+            .checked_add(1)
+            .ok_or("No local AI service port is available.")?;
     }
-    Ok(())
+
+    start_ollama(port, app)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -219,26 +216,42 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
-        .setup(setup_app)
-        .on_window_event(|_window, event| {
-            match event {
-                tauri::WindowEvent::CloseRequested { .. } => {
-                    println!("Closing...")
-                    // Settle or close resources that needs to be closed
-                }
-                _ => {}
-            }
-        })
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
+        .setup(setup_app)
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                log::info!(target: "pansophy", "application closing");
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             health_check,
             img_to_text,
             web_search
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("error while running Pansophy");
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{ollama_url, validate_search, DEFAULT_OLLAMA_PORT};
 
+    #[test]
+    fn validates_and_trims_search_queries() {
+        assert_eq!(validate_search("  rust tauri  ").unwrap(), "rust tauri");
+    }
 
+    #[test]
+    fn rejects_empty_search_queries() {
+        assert!(validate_search("  ").is_err());
+    }
+
+    #[test]
+    fn creates_loopback_ollama_urls() {
+        assert_eq!(
+            ollama_url(DEFAULT_OLLAMA_PORT, "/api/tags"),
+            "http://127.0.0.1:11500/api/tags"
+        );
+    }
+}
