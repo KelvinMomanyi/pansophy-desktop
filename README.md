@@ -32,6 +32,21 @@ On startup, the native application checks `PANSOPHY_OLLAMA_PORT` (11500 by defau
 Ollama service already listening there or starts the bundled sidecar. The frontend connects to
 the same service through `VITE_OLLAMA_API_URL`.
 
+## One-command Docker startup
+
+With Docker Engine and Compose installed, start the browser build, Ollama, and the default model:
+
+```sh
+docker compose up --build
+```
+
+Open <http://localhost:8080>. The first run downloads `mistral:7b` into the persistent
+`ollama-data` volume before the app starts. Set `PANSOPHY_WEB_PORT` to publish a different
+port. Stop the stack with `docker compose down`.
+
+The containerized browser build supports local chat and model downloads. Search, OCR, native
+window controls, and desktop notifications remain Tauri features and require `npm run tauri:dev`.
+
 ## Commands
 
 | Command                                           | Purpose                                |
@@ -44,6 +59,7 @@ the same service through `VITE_OLLAMA_API_URL`.
 | `npm run format:check`                            | Check Prettier formatting              |
 | `npm test`                                        | Run the Vitest suite once              |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run native unit tests                  |
+| `docker compose up --build`                       | Start the browser app and Ollama stack |
 
 ## Configuration
 
