@@ -8,11 +8,15 @@ use app_lib::health_check;
 
 fn mock_ollama(body: &'static str) -> (String, JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("mock server should bind");
-    let address = listener.local_addr().expect("mock server should have an address");
+    let address = listener
+        .local_addr()
+        .expect("mock server should have an address");
     let server = thread::spawn(move || {
         let (mut stream, _) = listener.accept().expect("health check should connect");
         let mut request = [0; 1024];
-        let bytes_read = stream.read(&mut request).expect("request should be readable");
+        let bytes_read = stream
+            .read(&mut request)
+            .expect("request should be readable");
         let request = String::from_utf8_lossy(&request[..bytes_read]);
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",

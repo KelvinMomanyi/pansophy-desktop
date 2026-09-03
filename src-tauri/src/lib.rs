@@ -33,8 +33,7 @@ fn configured_ollama_url() -> Option<String> {
 }
 
 fn ollama_base_url() -> String {
-    configured_ollama_url()
-        .unwrap_or_else(|| ollama_url(ollama_port(), ""))
+    configured_ollama_url().unwrap_or_else(|| ollama_url(ollama_port(), ""))
 }
 
 fn validate_search(search: &str) -> CommandResult<&str> {
@@ -263,8 +262,7 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        ollama_url, validate_ocr_extension, validate_search, DEFAULT_OLLAMA_PORT,
-        MAX_SEARCH_LENGTH,
+        ollama_url, validate_ocr_extension, validate_search, DEFAULT_OLLAMA_PORT, MAX_SEARCH_LENGTH,
     };
 
     #[test]
