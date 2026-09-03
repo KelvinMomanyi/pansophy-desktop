@@ -5,7 +5,7 @@ import svelte from 'eslint-plugin-svelte';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', 'src-tauri/target/**'],
+    ignores: ['coverage/**', 'dist/**', 'node_modules/**', 'src-tauri/target/**'],
   },
   eslint.configs.recommended,
   ...svelte.configs['flat/recommended'],
