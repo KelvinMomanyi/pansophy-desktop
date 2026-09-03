@@ -44,6 +44,21 @@ fn validate_search(search: &str) -> CommandResult<&str> {
     Ok(trimmed)
 }
 
+fn validate_ocr_extension(input_path: &Path) -> CommandResult<String> {
+    let extension = input_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if !matches!(extension.as_str(), "jpg" | "jpeg" | "pdf" | "png" | "webp") {
+        return Err(CommandError::new(
+            "INVALID_INPUT",
+            "Only PNG, JPEG, WebP, and PDF files are supported.",
+        ));
+    }
+    Ok(extension)
+}
+
 #[tauri::command]
 async fn web_search(search: String) -> CommandResult<Vec<SearchResult>> {
     let query = validate_search(&search)?;
@@ -64,17 +79,7 @@ async fn img_to_text(img_path: String, app: tauri::AppHandle) -> CommandResult<S
         ));
     }
 
-    let extension = input_path
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    if !matches!(extension.as_str(), "jpg" | "jpeg" | "pdf" | "png" | "webp") {
-        return Err(CommandError::new(
-            "INVALID_INPUT",
-            "Only PNG, JPEG, WebP, and PDF files are supported.",
-        ));
-    }
+    let extension = validate_ocr_extension(input_path)?;
 
     if extension == "pdf" {
         let bytes = std::fs::read(input_path)
@@ -235,7 +240,12 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{ollama_url, validate_search, DEFAULT_OLLAMA_PORT};
+    use std::path::Path;
+
+    use super::{
+        ollama_url, validate_ocr_extension, validate_search, DEFAULT_OLLAMA_PORT,
+        MAX_SEARCH_LENGTH,
+    };
 
     #[test]
     fn validates_and_trims_search_queries() {
@@ -245,6 +255,37 @@ mod tests {
     #[test]
     fn rejects_empty_search_queries() {
         assert!(validate_search("  ").is_err());
+    }
+
+    #[test]
+    fn enforces_search_query_character_limit() {
+        assert!(validate_search(&"a".repeat(MAX_SEARCH_LENGTH)).is_ok());
+        let error = validate_search(&"a".repeat(MAX_SEARCH_LENGTH + 1)).unwrap_err();
+        assert_eq!(error.code, "INVALID_INPUT");
+    }
+
+    #[test]
+    fn accepts_supported_ocr_extensions_case_insensitively() {
+        for (file_name, expected) in [
+            ("scan.JPG", "jpg"),
+            ("scan.jpeg", "jpeg"),
+            ("paper.PDF", "pdf"),
+            ("capture.png", "png"),
+            ("photo.webp", "webp"),
+        ] {
+            assert_eq!(
+                validate_ocr_extension(Path::new(file_name)).unwrap(),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unsupported_or_missing_ocr_extensions() {
+        for file_name in ["notes.txt", "image.gif", "README"] {
+            let error = validate_ocr_extension(Path::new(file_name)).unwrap_err();
+            assert_eq!(error.code, "INVALID_INPUT");
+        }
     }
 
     #[test]
