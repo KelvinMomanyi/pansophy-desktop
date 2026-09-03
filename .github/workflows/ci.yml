@@ -25,6 +25,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run format:check
       - run: npm run check
@@ -45,6 +47,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Audit Rust dependencies
+        working-directory: src-tauri
+        run: cargo audit
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
       - run: cargo check --manifest-path src-tauri/Cargo.toml
       - run: cargo test --manifest-path src-tauri/Cargo.toml
