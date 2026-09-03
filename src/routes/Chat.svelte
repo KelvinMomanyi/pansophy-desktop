@@ -16,6 +16,7 @@
   import { userMessage } from '../lib/errors.js';
   import { logger } from '../lib/logger.js';
   import { addFile, copyText, removeFile } from '../lib/ocr.js';
+  import { webSearch } from '../lib/search.js';
 
   const deepThinkModel = 'deepseek-r1:7b';
   const defaultModel = 'mistral:7b';
@@ -145,20 +146,7 @@
     }
   };
 
-  function normalizeSearchResults(payload) {
-    if (!Array.isArray(payload)) return [];
-    return payload
-      .filter((result) => result && typeof result === 'object')
-      .map((result) => ({
-        title: typeof result.title === 'string' ? result.title : 'Untitled result',
-        description: typeof result.description === 'string' ? result.description : '',
-        link: typeof result.link === 'string' ? result.link : '',
-        domain: typeof result.domain === 'string' ? result.domain : '',
-      }))
-      .filter((result) => result.link.startsWith('https://'));
-  }
-
-  const webSearch = async () => {
+  const handleWebSearch = async () => {
     const query = prompt.trim();
     if (loading || !query) return;
 
@@ -168,30 +156,14 @@
     answers = [...answers, { role: 'user', content: 'Search: ' + query }];
 
     try {
-      sources = normalizeSearchResults(await invoke('web_search', { search: query }));
+      const result = await webSearch(query, { model: defaultModel });
+      sources = result.sources;
       sourcesOpen = true;
       if (sources.length === 0) {
         answers = [...answers, { role: 'system', content: 'No search results were found.' }];
         return;
       }
-
-      const sourceText = sources
-        .map((result, index) => index + 1 + '. ' + result.title + ': ' + result.description)
-        .join('\n');
-      const summary = await streamChat({
-        model: defaultModel,
-        messages: [
-          {
-            role: 'user',
-            content:
-              'Summarize the search results for "' +
-              query +
-              '". Highlight the key information.\n\n' +
-              sourceText,
-          },
-        ],
-      });
-      answers = [...answers, { role: 'assistant', content: summary }];
+      answers = [...answers, { role: 'assistant', content: result.summary }];
     } catch (searchError) {
       const message = userMessage(searchError);
       error = message;
@@ -372,7 +344,7 @@
             <button
               type="button"
               class="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
-              on:click={webSearch}
+              on:click={handleWebSearch}
             >
               <Fa icon={faSearch} />
               Search web
