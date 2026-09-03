@@ -11,5 +11,13 @@ export default defineConfig({
     include: ['src/**/*.test.js'],
     setupFiles: ['./src/test/setup.js'],
     clearMocks: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      thresholds: {
+        lines: 60,
+        branches: 60,
+      },
+    },
   },
 });

@@ -28,7 +28,7 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run check
-      - run: npm test
+      - run: npx vitest run --coverage
       - run: npm run build
 
   rust:
