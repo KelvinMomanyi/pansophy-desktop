@@ -1,7 +1,6 @@
 <script>
   import { faPlus, faSearch } from '@fortawesome/free-solid-svg-icons';
   import { invoke } from '@tauri-apps/api/core';
-  import { open } from '@tauri-apps/plugin-dialog';
   import {
     isPermissionGranted,
     requestPermission,
@@ -16,6 +15,7 @@
   import { pullModel, streamChat } from '../lib/chatApi.js';
   import { userMessage } from '../lib/errors.js';
   import { logger } from '../lib/logger.js';
+  import { addFile, copyText, removeFile } from '../lib/ocr.js';
 
   const deepThinkModel = 'deepseek-r1:7b';
   const defaultModel = 'mistral:7b';
@@ -109,49 +109,39 @@
     }
   };
 
-  const addFile = async () => {
+  const handleAddFile = async () => {
+    error = null;
+    extractedText = '';
+    isProcessing = true;
     try {
-      const imgPath = await open({
-        multiple: false,
-        filters: [
-          {
-            name: 'Images and PDFs',
-            extensions: ['png', 'jpeg', 'jpg', 'pdf', 'webp'],
-          },
-        ],
+      const result = await addFile({
+        onSelected: (file) => {
+          currentFile = file;
+        },
       });
-      if (!imgPath) return;
-
-      currentFile = {
-        path: imgPath,
-        name: imgPath.split('/').pop() || imgPath.split('\\').pop() || imgPath,
-      };
-      error = null;
-      extractedText = '';
-      isProcessing = true;
-      extractedText = await invoke('img_to_text', { imgPath });
-      logger.info('ocr.completed', { fileName: currentFile.name });
+      if (result) {
+        currentFile = result.currentFile;
+        extractedText = result.extractedText;
+      }
     } catch (processingError) {
       error = userMessage(processingError);
-      logger.error('ocr.failed', {}, processingError);
     } finally {
       isProcessing = false;
     }
   };
 
-  const removeFile = () => {
-    currentFile = null;
-    extractedText = '';
-    error = null;
+  const handleRemoveFile = () => {
+    const cleared = removeFile();
+    currentFile = cleared.currentFile;
+    extractedText = cleared.extractedText;
+    error = cleared.error;
   };
 
-  const copyText = async () => {
+  const handleCopyText = async () => {
     try {
-      await navigator.clipboard.writeText(extractedText);
-      logger.info('ocr.copied');
+      await copyText(extractedText);
     } catch (clipboardError) {
-      error = 'The extracted text could not be copied.';
-      logger.error('ocr.copy_failed', {}, clipboardError);
+      error = userMessage(clipboardError);
     }
   };
 
@@ -325,13 +315,13 @@
                 <button
                   type="button"
                   class="rounded-lg bg-white/10 px-3 py-2 text-xs hover:bg-white/20"
-                  on:click={copyText}>Copy</button
+                  on:click={handleCopyText}>Copy</button
                 >
               {/if}
               <button
                 type="button"
                 class="rounded-lg bg-white/10 px-3 py-2 text-xs hover:bg-white/20"
-                on:click={removeFile}>Remove</button
+                on:click={handleRemoveFile}>Remove</button
               >
             </div>
           </div>
@@ -368,7 +358,7 @@
               type="button"
               aria-label="Extract text from a file"
               class="rounded-full bg-white/10 p-3 hover:bg-white/20"
-              on:click={addFile}
+              on:click={handleAddFile}
             >
               <Fa icon={faPlus} />
             </button>
