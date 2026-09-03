@@ -7,10 +7,8 @@ use serde_json::Value;
 use tauri::Manager;
 use tauri_plugin_shell::{process::CommandEvent, ShellExt};
 
-use crate::{
-    error::{CommandError, CommandResult},
-    utils::{DuckDuckGoLiteClient, SearchResult},
-};
+pub use crate::error::{CommandError, CommandResult};
+use crate::utils::{DuckDuckGoLiteClient, SearchResult};
 
 const DEFAULT_OLLAMA_PORT: u16 = 11_500;
 const MAX_SEARCH_LENGTH: usize = 500;
@@ -25,6 +23,18 @@ fn ollama_port() -> u16 {
 
 fn ollama_url(port: u16, path: &str) -> String {
     format!("http://127.0.0.1:{port}{path}")
+}
+
+fn configured_ollama_url() -> Option<String> {
+    std::env::var("PANSOPHY_OLLAMA_URL")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| value.trim_end_matches('/').to_owned())
+}
+
+fn ollama_base_url() -> String {
+    configured_ollama_url()
+        .unwrap_or_else(|| ollama_url(ollama_port(), ""))
 }
 
 fn validate_search(search: &str) -> CommandResult<&str> {
@@ -141,14 +151,14 @@ async fn img_to_text(img_path: String, app: tauri::AppHandle) -> CommandResult<S
     ))
 }
 
-#[tauri::command]
-fn health_check() -> CommandResult<HashMap<String, Value>> {
+pub fn health_check_url(base_url: &str) -> CommandResult<HashMap<String, Value>> {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(5))
+        .no_proxy()
         .build()
         .map_err(|error| CommandError::internal("Could not initialize the health check.", error))?;
     let response = client
-        .get(ollama_url(ollama_port(), "/api/tags"))
+        .get(format!("{}/api/tags", base_url.trim_end_matches('/')))
         .send()
         .and_then(reqwest::blocking::Response::error_for_status)
         .map_err(|error| CommandError::internal("The local AI service is unavailable.", error))?;
@@ -165,6 +175,11 @@ fn health_check() -> CommandResult<HashMap<String, Value>> {
         }
     }
     Ok(models)
+}
+
+#[tauri::command]
+pub fn health_check() -> CommandResult<HashMap<String, Value>> {
+    health_check_url(&ollama_base_url())
 }
 
 fn start_ollama(port: u16, app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -194,6 +209,11 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 .level(log::LevelFilter::Info)
                 .build(),
         )?;
+    }
+
+    if configured_ollama_url().is_some() {
+        log::info!(target: "pansophy", "using configured Ollama service without a sidecar");
+        return Ok(());
     }
 
     let mut port = ollama_port();

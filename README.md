@@ -52,6 +52,8 @@ Copy `.env.example` to `.env` for local overrides:
 - `VITE_OLLAMA_API_URL`: browser-visible Ollama base URL. Plain HTTP is accepted only for loopback
   addresses; remote services must use HTTPS.
 - `PANSOPHY_OLLAMA_PORT`: port used by the native health check and bundled sidecar.
+- `PANSOPHY_OLLAMA_URL`: optional full base URL for a local stub or managed Ollama service. When
+  set, the native application uses that URL and does not launch the bundled Ollama sidecar.
 
 Do not commit `.env`. No secret is required for the bundled local services.
 
@@ -84,6 +86,8 @@ To enforce CI before merging, enable branch protection for the default branch an
 
 ## Troubleshooting
 
+- **Run frontend tests without Tauri:** run `npm test` (or `npm test -- --coverage`) directly.
+  Vitest uses browser mocks and does not start the Tauri runtime, Ollama, or DuckDuckGo requests.
 - **The AI service is unavailable:** confirm port 11500 is free or set both variables in `.env`
   and your shell to the same alternative port.
 - **A sidecar is missing:** obtain the correct Ollama/Tesseract executable, place it in
