@@ -17,6 +17,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A Docker Compose stack for the browser app, Ollama, and default model setup.
 - Frontend coverage thresholds and isolated native health-check testing.
 
+### Changed
+
+- Frontend CI now enforces 60% minimum line, function, branch, and statement coverage.
+
 ### Security
 
 - Automated high-severity npm and RustSec dependency audits in CI.

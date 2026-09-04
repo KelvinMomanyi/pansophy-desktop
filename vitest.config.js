@@ -15,8 +15,11 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       thresholds: {
-        lines: 60,
+        autoUpdate: false,
         branches: 60,
+        functions: 60,
+        lines: 60,
+        statements: 60,
       },
     },
   },
