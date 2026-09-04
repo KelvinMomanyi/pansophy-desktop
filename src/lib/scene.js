@@ -7,6 +7,68 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 import { logger } from './logger.js';
 
+export function darkenNonBloomed(object, { bloomLayer, darkMaterial, materials }) {
+  if (object.isMesh && bloomLayer.test(object.layers) === false) {
+    materials[object.uuid] = object.material;
+    object.material = darkMaterial;
+  }
+}
+
+export function restoreMaterial(object, materials) {
+  if (materials[object.uuid]) {
+    object.material = materials[object.uuid];
+    delete materials[object.uuid];
+  }
+}
+
+export function enhanceMaterials(
+  object,
+  {
+    bloomScene,
+    emissiveObjects,
+    renderer,
+    three = {
+      LinearFilter: THREE.LinearFilter,
+      LinearMipmapLinearFilter: THREE.LinearMipmapLinearFilter,
+    },
+  },
+) {
+  object.traverse((child) => {
+    if (child.isMesh && child.material) {
+      child.frustumCulled = false;
+      const childMaterials = Array.isArray(child.material) ? child.material : [child.material];
+
+      childMaterials.forEach((material) => {
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
+          material.needsUpdate = true;
+
+          if (material.normalMap) {
+            material.normalScale.set(1, 1);
+          }
+
+          if (material.map) {
+            material.map.generateMipmaps = true;
+            material.map.minFilter = three.LinearMipmapLinearFilter;
+            material.map.magFilter = three.LinearFilter;
+            material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          }
+
+          if (material.emissive && material.emissive.getHex() > 0) {
+            material.userData.originalEmissive = material.emissive.clone();
+            material.userData.originalEmissiveIntensity = material.emissiveIntensity || 1.0;
+            material.emissiveIntensity = (material.emissiveIntensity || 1.0) * 1.1;
+            child.layers.enable(bloomScene);
+            emissiveObjects.push(child);
+          }
+        }
+      });
+    }
+  });
+}
+
 export function createPoweringScene(container, { onStatus, onComplete }) {
   const scene = new THREE.Scene();
 
@@ -159,73 +221,9 @@ export function createPoweringScene(container, { onStatus, onComplete }) {
   let audioBuffer = null;
   let modelLoaded = false;
 
-  // Function to darken non-emissive materials for bloom pass
-  function darkenNonBloomed(obj) {
-    if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
-      materials[obj.uuid] = obj.material;
-      obj.material = darkMaterial;
-    }
-  }
-
-  // Function to restore original materials
-  function restoreMaterial(obj) {
-    if (materials[obj.uuid]) {
-      obj.material = materials[obj.uuid];
-      delete materials[obj.uuid];
-    }
-  }
-
-  // Function to enhance materials and setup selective bloom - PRESERVE ORIGINAL APPEARANCE
-  function enhanceMaterials(object) {
-    object.traverse((child) => {
-      if (child.isMesh && child.material) {
-        // Enable high-quality rendering
-        child.frustumCulled = false; // Prevent culling issues
-
-        const materials = Array.isArray(child.material) ? child.material : [child.material];
-
-        materials.forEach((material) => {
-          child.castShadow = true;
-          child.receiveShadow = true;
-
-          if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
-            // Improve material quality without changing appearance
-            material.needsUpdate = true;
-
-            // Enable proper normal mapping if available
-            if (material.normalMap) {
-              material.normalScale.set(1, 1);
-            }
-
-            // Ensure proper texture filtering
-            if (material.map) {
-              material.map.generateMipmaps = true;
-              material.map.minFilter = THREE.LinearMipmapLinearFilter;
-              material.map.magFilter = THREE.LinearFilter;
-              material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            }
-
-            // Only check for emissive properties - DON'T modify other material properties
-            if (material.emissive && material.emissive.getHex() > 0) {
-              // Store original values
-              material.userData.originalEmissive = material.emissive.clone();
-              material.userData.originalEmissiveIntensity = material.emissiveIntensity || 1.0;
-
-              // Only slightly enhance emissive for bloom detection
-              material.emissiveIntensity = (material.emissiveIntensity || 1.0) * 1.1;
-
-              // Add to bloom layer
-              child.layers.enable(BLOOM_SCENE);
-              emissiveObjects.push(child);
-            }
-
-            // DON'T modify metalness, roughness, colors, or other properties
-            // This preserves the original model appearance
-          }
-        });
-      }
-    });
-  }
+  const darkenSceneObject = (object) =>
+    darkenNonBloomed(object, { bloomLayer, darkMaterial, materials });
+  const restoreSceneMaterial = (object) => restoreMaterial(object, materials);
 
   function startSynchronizedSequence() {
     if (!audioBuffer || !modelLoaded) return;
@@ -347,7 +345,11 @@ export function createPoweringScene(container, { onStatus, onComplete }) {
       scene.add(gltf.scene);
 
       // Enhance materials and setup selective bloom
-      enhanceMaterials(gltf.scene);
+      enhanceMaterials(gltf.scene, {
+        bloomScene: BLOOM_SCENE,
+        emissiveObjects,
+        renderer,
+      });
 
       if (gltf.animations && gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(gltf.scene);
@@ -395,9 +397,9 @@ export function createPoweringScene(container, { onStatus, onComplete }) {
     if (mixer) mixer.update(delta);
 
     // Render scene for bloom
-    scene.traverse(darkenNonBloomed);
+    scene.traverse(darkenSceneObject);
     bloomComposer.render(0);
-    scene.traverse(restoreMaterial);
+    scene.traverse(restoreSceneMaterial);
 
     // Render final scene
     finalPass.uniforms.bloomTexture.value = bloomComposer.renderTarget2.texture;
