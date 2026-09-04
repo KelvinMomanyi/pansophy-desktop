@@ -5,7 +5,5 @@ export default {
   theme: {
     extend: {},
   },
-  plugins: [
-    require('@tailwindcss/backdrop-filter'), // If available, check Tailwind plugins
-  ],
+  plugins: [],
 };

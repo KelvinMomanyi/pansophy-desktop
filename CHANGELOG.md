@@ -20,6 +20,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Frontend CI now enforces 60% minimum line, function, branch, and statement coverage.
+- Removed unused React, Threlte, icon, and legacy Tailwind plugin dependencies.
 
 ### Security
 
