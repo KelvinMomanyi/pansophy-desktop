@@ -31,8 +31,7 @@ pnpm-lock.yaml    # (optional)
 /src-tauri/bundle/
 /src-tauri/*.log
 
-# Cargo specific
-/src-tauri/Cargo.lock
+# Cargo.lock is committed for reproducible desktop builds.
 
 # =============================
 # OS / Editor Junk
