@@ -22,6 +22,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Contribution and pull request checklists require focused commits with regression tests,
+  matching changelog entries, coverage checks, and verified dependency-removal evidence.
+
 - Coverage enforcement now includes every JavaScript and Svelte source file, including modules
   not imported by tests, while excluding test setup and specs.
 
