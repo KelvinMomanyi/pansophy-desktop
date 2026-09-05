@@ -22,6 +22,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Coverage enforcement now includes every JavaScript and Svelte source file, including modules
+  not imported by tests, while excluding test setup and specs.
+
 - Frontend CI now enforces 60% minimum line, function, branch, and statement coverage.
 - Removed unused React, Threlte, icon, and legacy Tailwind plugin dependencies.
 

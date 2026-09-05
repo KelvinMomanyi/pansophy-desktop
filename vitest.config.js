@@ -1,5 +1,5 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { defineConfig } from 'vitest/config';
+import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [svelte()],
@@ -13,6 +13,8 @@ export default defineConfig({
     clearMocks: true,
     coverage: {
       provider: 'v8',
+      include: ['src/**/*.{js,svelte}'],
+      exclude: [...coverageConfigDefaults.exclude, 'src/test/**'],
       reporter: ['text', 'json', 'html'],
       thresholds: {
         autoUpdate: false,

@@ -31,6 +31,7 @@ jobs:
       - run: npm run format:check
       - name: Typecheck
         run: npm run check
+      # Count untested source files and require 60% for all four coverage metrics.
       - name: Enforce frontend coverage
         run: npx vitest run --coverage
       - run: npm run build
