@@ -9,6 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Chat regression tests for streamed tokens, keyboard submission, retries, model downloads,
+  research sources, and file extraction controls.
+
 - Local streamed conversations backed by Ollama.
 - Optional deep-thinking model downloads with progress and desktop notifications.
 - DuckDuckGo Lite research search with local-model summaries and source links.
