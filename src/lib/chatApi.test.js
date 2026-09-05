@@ -23,6 +23,31 @@ describe('chat API', () => {
     expect(resolveApiBaseUrl('https://ai.example.com')).toBe('https://ai.example.com');
   });
 
+  it.each([
+    ['http://127.0.0.1:11500/', 'http://127.0.0.1:11500'],
+    ['http://LOCALHOST:11500/', 'http://localhost:11500'],
+    ['http://[::1]:11500/', 'http://[::1]:11500'],
+    ['http://[0:0:0:0:0:0:0:1]:11500/', 'http://[::1]:11500'],
+  ])('accepts and normalizes the loopback endpoint %s', (input, expected) => {
+    expect(resolveApiBaseUrl(input)).toBe(expected);
+  });
+
+  it.each([
+    'http://localhost.example.com',
+    'http://127.0.0.1.example.com',
+    'http://192.168.1.10',
+    'http://0.0.0.0',
+    'http://[::2]',
+    'ftp://localhost',
+    'file:///tmp/ollama',
+  ])('rejects an insecure non-loopback endpoint %s', (input) => {
+    expect(() => resolveApiBaseUrl(input)).toThrow('must use HTTPS');
+  });
+
+  it('rejects malformed endpoints with a configuration error', () => {
+    expect(() => resolveApiBaseUrl('not a URL')).toThrow('must be a valid URL');
+  });
+
   it('parses tokens split across arbitrary network chunks', async () => {
     const fetchImpl = vi.fn(async () =>
       streamResponse(['{"message":{"content":"hel', 'lo"}}\n{"message":{"content":"!"}}\n']),

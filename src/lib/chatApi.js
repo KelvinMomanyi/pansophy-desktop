@@ -16,7 +16,7 @@ export function resolveApiBaseUrl(value = import.meta.env.VITE_OLLAMA_API_URL) {
     });
   }
 
-  const isLoopback = ['127.0.0.1', 'localhost', '::1'].includes(parsed.hostname);
+  const isLoopback = ['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname);
   if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLoopback)) {
     throw new AppError(
       'INVALID_CONFIG',

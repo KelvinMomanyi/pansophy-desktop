@@ -22,6 +22,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Ollama URL validation accepts IPv6 loopback endpoints while continuing to reject insecure
+  remote URLs and hostname lookalikes.
+
 - Contribution and pull request checklists require focused commits with regression tests,
   matching changelog entries, coverage checks, and verified dependency-removal evidence.
 
