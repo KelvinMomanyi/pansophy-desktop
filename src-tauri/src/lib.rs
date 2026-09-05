@@ -1,3 +1,4 @@
+mod commands;
 mod error;
 mod utils;
 
@@ -7,6 +8,7 @@ use serde_json::Value;
 use tauri::Manager;
 use tauri_plugin_shell::{process::CommandEvent, ShellExt};
 
+pub use crate::commands::health_check;
 pub use crate::error::{CommandError, CommandResult};
 use crate::utils::{DuckDuckGoLiteClient, SearchResult};
 
@@ -176,11 +178,6 @@ pub fn health_check_url(base_url: &str) -> CommandResult<HashMap<String, Value>>
     Ok(models)
 }
 
-#[tauri::command]
-pub fn health_check() -> CommandResult<HashMap<String, Value>> {
-    health_check_url(&ollama_base_url())
-}
-
 fn start_ollama(port: u16, app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let models_dir = app
         .path()
@@ -249,7 +246,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            health_check,
+            commands::health_check,
             img_to_text,
             web_search
         ])
