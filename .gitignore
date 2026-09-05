@@ -27,7 +27,6 @@ pnpm-lock.yaml    # (optional)
 /src-tauri/target/
 
 # Tauri build artifacts
-/src-tauri/tauri.conf.json
 /src-tauri/bundle/
 /src-tauri/*.log
 
