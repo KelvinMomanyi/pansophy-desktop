@@ -9,6 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Isolated window-control tests cover native close/minimize actions, recoverable failures,
+  and unavailable desktop runtimes.
+
 - Chat regression tests for streamed tokens, keyboard submission, retries, model downloads,
   research sources, and file extraction controls.
 
