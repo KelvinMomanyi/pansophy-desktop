@@ -1,39 +1,52 @@
 [package]
 name = "app"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "Local research assistant with Ollama chat, web search, and OCR"
+repository = "https://github.com/KelvinMomanyi/pansophy-desktop"
 edition = "2021"
 rust-version = "1.77.2"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "app"
+path = "src/main.rs"
+required-features = ["desktop"]
+
+[features]
+default = ["desktop"]
+desktop = [
+  "dep:tauri-build", "dep:tauri", "dep:tauri-plugin-log",
+  "dep:tauri-plugin-opener", "dep:tauri-plugin-shell",
+  "dep:tauri-plugin-notification", "dep:tauri-plugin-fs",
+  "dep:tauri-plugin-dialog", "dep:tauri-plugin-http", "dep:tauri-plugin-store",
+]
+
 [build-dependencies]
-tauri-build = { version = "2.3.0", features = [] }
+tauri-build = { version = "2.3.0", optional = true }
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.6.0", features = [] }
-tauri-plugin-log = "2"
-window-vibrancy = "0.6"
-tauri-plugin-opener = "2"
-reqwest = { version = "0.12", features = ["blocking", "json"] }  # Updated from 0.10.10
-tauri-plugin-shell = "2"
-ollama-rs = "0.3.2"
-tauri-plugin-notification = "2"
-tauri-plugin-fs = "2"
-tauri-plugin-dialog = "2"
-urlencoding = "2.1.3"
-tauri-plugin-http = "2"
+tauri = { version = "2.6.0", optional = true }
+tauri-plugin-log = { version = "2", optional = true }
+tauri-plugin-opener = { version = "2", optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+tauri-plugin-shell = { version = "2", optional = true }
+tauri-plugin-notification = { version = "2", optional = true }
+tauri-plugin-fs = { version = "2", optional = true }
+tauri-plugin-dialog = { version = "2", optional = true }
+tauri-plugin-http = { version = "2", optional = true }
 scraper = "0.23.1"
 url = "2.5.4"
-tauri-plugin-store = "2"
+tauri-plugin-store = { version = "2", optional = true }
 pdf-extract = "0.12.0"
+
+tokio = { version = "1", features = ["rt", "time"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

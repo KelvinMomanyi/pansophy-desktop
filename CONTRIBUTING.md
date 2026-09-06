@@ -45,7 +45,8 @@ npm audit --audit-level=high
 npm run build
 ```
 
-Native changes must also pass:
+Native service changes must pass the portable tests and Clippy commands in README on any OS.
+Desktop integration changes must also pass:
 
 ```sh
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
@@ -59,8 +60,8 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - Put Rust unit tests in the module's `tests` block and cross-module tests in `src-tauri/tests`.
 - Mock network and sidecar boundaries; tests must not depend on a running Ollama or DuckDuckGo.
 - Name tests after observable behavior and cover both successful and rejected inputs.
-- Run `npm test -- --coverage` after each frontend module change. The global minimum is 60%
-  each for lines, functions, branches, and statements, including unimported application files.
+- Run `npm test -- --coverage` after each frontend module change. The global minimum is 80%
+  for lines/statements and 75% for functions/branches, including unimported application files.
 - Keep the implementation, its regression tests, and its changelog entry together. Do not split
   the tests into a later bulk commit.
 

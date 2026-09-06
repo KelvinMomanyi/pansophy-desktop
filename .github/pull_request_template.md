@@ -12,6 +12,6 @@ For a CI gate change, include a deliberate failure check and the passing result 
 - [ ] Each commit addresses one module or concern with its implementation, tests, and changelog entry.
 - [ ] Formatting sweeps and unrelated refactors are separate from behavior changes.
 - [ ] Lint, JavaScript/Svelte typecheck, formatting, and coverage checks pass.
-- [ ] All four coverage metrics meet the 60% minimum with untested source files included.
+- [ ] Coverage meets 80% statements/lines and 75% branches/functions with untested files included.
 - [ ] Dependency changes include both manifest and lockfile, with unused-package findings verified.
 - [ ] Native changes pass cargo fmt, cargo check, and cargo test, or this PR has no native changes.

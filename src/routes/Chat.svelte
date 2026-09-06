@@ -11,6 +11,7 @@
 
   import logo from '../assets/Logo.png';
   import bot from '../assets/BotIt.png';
+  import Diagnostics from '../components/Diagnostics.svelte';
   import DarkModeToggle from '../components/DarkModeToggle.svelte';
   import { pullModel, streamChat } from '../lib/chatApi.js';
   import { userMessage } from '../lib/errors.js';
@@ -214,7 +215,8 @@
       New conversation
     </button>
 
-    <div class="mt-auto">
+    <div class="mt-auto space-y-4">
+      <Diagnostics />
       <DarkModeToggle />
     </div>
   </aside>

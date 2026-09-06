@@ -9,6 +9,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- In-app diagnostics for Ollama connectivity, model count, OCR resources, and local logs.
+- Portable Rust service tests on Windows, Linux, and macOS, including HTTP failure fixtures,
+  mocked image extraction, real PDF parsing, and degraded-service diagnostics.
+
 - Bounded JSON runtime logs in debug and release builds, with an optional frontend sink,
   validated metadata, and tests for sensitive-payload filtering and persistence failures.
 
@@ -26,7 +30,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A Docker Compose stack for the browser app, Ollama, and default model setup.
 - Frontend coverage thresholds and isolated native health-check testing.
 
+### Fixed
+
+- Search snippets can no longer leak between adjacent results; unsafe result URLs are discarded.
+- OCR preserves split UTF-8 output and rejects missing, unsupported, oversized, or failed inputs.
+- Desktop model storage is writable after installation; startup no longer changes ports silently.
+
 ### Changed
+
+- Native HTTP and OCR operations have explicit time and size limits.
+- Frontend coverage now requires 80% statements/lines and 75% branches/functions.
+- Removed unused direct Rust Ollama, window-vibrancy, and URL-encoding dependencies.
 
 - Ollama URL validation accepts IPv6 loopback endpoints while continuing to reject insecure
   remote URLs and hostname lookalikes.
@@ -37,7 +51,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Coverage enforcement now includes every JavaScript and Svelte source file, including modules
   not imported by tests, while excluding test setup and specs.
 
-- Frontend CI now enforces 60% minimum line, function, branch, and statement coverage.
 - Removed unused React, Threlte, icon, and legacy Tailwind plugin dependencies.
 
 ### Security
