@@ -1,3 +1,5 @@
+import { invoke } from '@tauri-apps/api/core';
+
 /** @param {unknown} error */
 function errorFields(error) {
   if (!(error instanceof Error)) return { message: String(error) };
@@ -9,22 +11,47 @@ function errorFields(error) {
   };
 }
 
-function write(level, event, context = {}, error) {
-  const entry = {
-    timestamp: new Date().toISOString(),
-    level,
-    event,
-    ...context,
-    ...(error === undefined ? {} : { error: errorFields(error) }),
-  };
-
-  if (level === 'error') console.error(entry);
-  else if (level === 'warn') console.warn(entry);
-  else console.info(entry);
+async function desktopSink(entry) {
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    await invoke('write_log_line', { entry });
+  }
 }
 
-export const logger = {
-  info: (event, context) => write('info', event, context),
-  warn: (event, context, error) => write('warn', event, context, error),
-  error: (event, context, error) => write('error', event, context, error),
-};
+/**
+ * @param {{
+ *   output?: Pick<Console, 'info' | 'warn' | 'error'>,
+ *   sink?: ((entry: Record<string, unknown>) => unknown) | null
+ * }} [options]
+ */
+export function createLogger({ output = console, sink = desktopSink } = {}) {
+  /** @param {'info' | 'warn' | 'error'} level */
+  async function write(level, event, context = {}, error = undefined) {
+    const entry = {
+      ...context,
+      timestamp: new Date().toISOString(),
+      level,
+      event,
+      ...(error === undefined ? {} : { error: errorFields(error) }),
+    };
+    output[level](entry);
+    if (!sink) return;
+    try {
+      await sink(entry);
+    } catch {
+      // Report a sink failure only to the console, so persistence cannot recurse.
+      output.warn({
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        event: 'logging.persistence_failed',
+      });
+    }
+  }
+
+  return {
+    info: (event, context = {}) => write('info', event, context),
+    warn: (event, context = {}, error = undefined) => write('warn', event, context, error),
+    error: (event, context = {}, error = undefined) => write('error', event, context, error),
+  };
+}
+
+export const logger = createLogger();

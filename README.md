@@ -79,7 +79,7 @@ Do not commit `.env`. No secret is required for the bundled local services.
 src/routes and src/components  Svelte presentation and interaction
 src/lib/chatApi.js             validated Ollama HTTP/NDJSON boundary
 src/lib/errors.js              normalized application errors
-src/lib/logger.js              structured browser log events
+src/lib/logger.js              structured console events and optional native persistence
 src/lib/themeStore.js          theme state and native synchronization
 src-tauri/src/lib.rs           validated Tauri commands and sidecar lifecycle
 src-tauri/src/utils.rs         DuckDuckGo response parsing
@@ -87,6 +87,19 @@ src-tauri/src/utils.rs         DuckDuckGo response parsing
 
 The browser layer never parses Ollama streams inside a component. Native commands return
 serializable `{ code, message }` errors so the UI receives predictable failures.
+
+### Runtime logs
+
+Debug and release desktop builds persist JSON lines through the existing Tauri logging plugin.
+The file is `pansophy.log` inside Tauri's `app_log_dir()`: on Windows,
+`%LOCALAPPDATA%com.pansophy.desktoplogs`. The file appends across sessions and is replaced
+when it reaches approximately 2 MB. Browser-only runs log to the console.
+
+`write_log_line` validates frontend event names and levels and retains only model, deep-thinking,
+and error name/code metadata. Prompt/query text, document contents, filenames, raw frontend error
+messages, and stacks are omitted from the persistent frontend record. Native error messages remain
+local in the same log. `createLogger({ sink: null })` disables persistence for a custom logger;
+a sink failure falls back to the console without interrupting the operation.
 
 ## Tests and CI
 

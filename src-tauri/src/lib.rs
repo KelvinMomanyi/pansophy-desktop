@@ -1,5 +1,6 @@
 mod commands;
 mod error;
+mod logging;
 mod utils;
 
 use std::{collections::HashMap, net::TcpStream, path::Path, time::Duration};
@@ -199,13 +200,25 @@ fn start_ollama(port: u16, app: &mut tauri::App) -> Result<(), Box<dyn std::erro
 }
 
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    if cfg!(debug_assertions) {
-        app.handle().plugin(
-            tauri_plugin_log::Builder::default()
-                .level(log::LevelFilter::Info)
-                .build(),
-        )?;
-    }
+    app.handle().plugin(
+        tauri_plugin_log::Builder::default()
+            .level(log::LevelFilter::Info)
+            .targets([
+                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                    file_name: Some("pansophy".into()),
+                }),
+            ])
+            .max_file_size(2_000_000)
+            .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+            .format(|out, message, record| {
+                out.finish(format_args!(
+                    "{}",
+                    logging::format_record(record.level(), record.target(), &message.to_string())
+                ))
+            })
+            .build(),
+    )?;
 
     if configured_ollama_url().is_some() {
         log::info!(target: "pansophy", "using configured Ollama service without a sidecar");
@@ -247,6 +260,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::health_check,
+            commands::write_log_line,
             img_to_text,
             web_search
         ])

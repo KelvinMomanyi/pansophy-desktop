@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { logger } from './logger.js';
+import { createLogger, logger } from './logger.js';
+
+const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke }));
 
 describe('logger', () => {
   beforeEach(() => {
+    mocks.invoke.mockResolvedValue(undefined);
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-03T12:30:00.000Z'));
   });
@@ -11,6 +15,7 @@ describe('logger', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('writes structured info events with context', () => {
@@ -58,4 +63,54 @@ describe('logger', () => {
       error: { message: 'offline' },
     });
   });
+  it('forwards desktop events to the native logging command', async () => {
+    vi.stubGlobal('__TAURI_INTERNALS__', {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    await logger.info('ocr.completed', { model: 'mistral:7b' });
+    expect(mocks.invoke).toHaveBeenCalledWith('write_log_line', {
+      entry: expect.objectContaining({
+        level: 'info',
+        event: 'ocr.completed',
+        model: 'mistral:7b',
+      }),
+    });
+  });
+
+  it('keeps browser-only logging independent of Tauri', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    await logger.info('browser.ready');
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
+  it('supports a disabled sink and protects reserved event fields', async () => {
+    const output = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    const log = createLogger({ output, sink: null });
+    await log.info('trusted.event', { event: 'spoofed', level: 'error', timestamp: 'fake' });
+    expect(output.info).toHaveBeenCalledWith({
+      event: 'trusted.event',
+      level: 'info',
+      timestamp: '2026-09-03T12:30:00.000Z',
+    });
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
+  it.each(['throw', 'reject'])(
+    'contains a sink failure (%s) without recursion',
+    async (failure) => {
+      const output = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+      const sink = vi.fn(() => {
+        if (failure === 'throw') throw new Error('Disk unavailable');
+        return Promise.reject(new Error('Disk unavailable'));
+      });
+      const log = createLogger({ output, sink });
+      await expect(
+        log.error('operation.failed', {}, new Error('Failure')),
+      ).resolves.toBeUndefined();
+      expect(sink).toHaveBeenCalledOnce();
+      expect(output.error).toHaveBeenCalledOnce();
+      expect(output.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'logging.persistence_failed' }),
+      );
+    },
+  );
 });

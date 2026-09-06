@@ -9,6 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Bounded JSON runtime logs in debug and release builds, with an optional frontend sink,
+  validated metadata, and tests for sensitive-payload filtering and persistence failures.
+
 - Isolated window-control tests cover native close/minimize actions, recoverable failures,
   and unavailable desktop runtimes.
 
