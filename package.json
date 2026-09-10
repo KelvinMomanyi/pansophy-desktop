@@ -45,7 +45,7 @@
     "@tauri-apps/plugin-dialog": "^2.3.0",
     "@tauri-apps/plugin-notification": "^2.3.0",
     "svelte-fa": "^4.0.4",
-    "svelte-spa-router": "^4.0.1",
+    "svelte-spa-router": "^5.1.1",
     "tailwindcss": "^4.3.3",
     "three": "^0.185.1"
   }
